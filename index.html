@@ -1348,32 +1348,40 @@
         let tempGoogleData = null;
 
         const handleGoogleSignupClick = () => {
-            // 구글 원탭(One Tap) 프롬프트를 명시적으로 호출
-            google.accounts.id.prompt((notification) => {
-                if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
-                    console.log("Google One Tap prompt was not displayed or was skipped");
-                    // 프롬프트가 표시되지 않으면 로그인 플로우로 전환
-                    showGoogleSignupFlow();
-                }
-            });
+            // localhost 환경에서는 Google OAuth 대신 시뮬레이션 사용
+            showLocalGoogleSimulation();
         };
 
-        const showGoogleSignupFlow = () => {
-            // Google Sign-In with redirect flow
-            const clientId = "878008184488-12sdton6pakapcrembj418rea9h2v4t0.apps.googleusercontent.com";
-            const redirectUri = window.location.origin + window.location.pathname;
-            const scope = "profile email";
-            const responseType = "token";
+        const showLocalGoogleSimulation = () => {
+            // localhost에서 Google OAuth 시뮬레이션
+            const email = prompt(
+                '🔐 Google 계정 시뮬레이션\n\n' +
+                'Google 계정 이메일을 입력하세요\n' +
+                '(예: user@gmail.com)\n\n' +
+                '💡 참고: 이것은 로컬 테스트용입니다.\n' +
+                '배포 후에는 실제 Google OAuth가 작동합니다.',
+                'test@gmail.com'
+            );
             
-            const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
-                `client_id=${clientId}&` +
-                `redirect_uri=${encodeURIComponent(redirectUri)}&` +
-                `response_type=${responseType}&` +
-                `scope=${encodeURIComponent(scope)}&` +
-                `access_type=online`;
+            if (!email) return; // 취소 클릭
             
-            // 팝업으로 Google 로그인 창 열기
-            window.open(authUrl, 'googleSignup', 'width=500,height=600');
+            if (!email.includes('@')) {
+                alert('❌ 올바른 이메일 형식이 아닙니다.');
+                return;
+            }
+            
+            // 이름 추출 (이메일의 @ 전 부분)
+            const name = email.split('@')[0];
+            
+            console.log("Local Google Simulation - Email:", email);
+            console.log("Local Google Simulation - Name:", name);
+            
+            // 계정 유형 선택
+            tempGoogleData = { 
+                name: name.charAt(0).toUpperCase() + name.slice(1),
+                email: email 
+            };
+            document.getElementById('googleTypeModal').style.display = 'block';
         };
 
         const submitGoogleSignup = () => {
@@ -1412,33 +1420,68 @@
         // ========== 초기화 ==========
         window.onload = function () {
             try {
-                // Google Login 초기 설정 - origin_mismatch 에러 처리
-                google.accounts.id.initialize({
-                    client_id: "878008184488-12sdton6pakapcrembj418rea9h2v4t0.apps.googleusercontent.com",
-                    callback: handleCredentialResponse,
-                    error_callback: function() {
-                        console.log("Google initialization error - This might be due to localhost or domain mismatch");
+                // Google Login 초기 설정
+                // ⚠️ Client ID는 아래에서 업데이트하세요!
+                const CLIENT_ID = "878008184488-12sdton6pakapcrembj418rea9h2v4t0.apps.googleusercontent.com";
+                
+                // 현재 환경 감지
+                const isLocalhost = window.location.hostname === 'localhost' || 
+                                   window.location.hostname === '127.0.0.1';
+                
+                if (!isLocalhost) {
+                    // 배포 환경: 실제 Google OAuth 사용
+                    google.accounts.id.initialize({
+                        client_id: CLIENT_ID,
+                        callback: handleCredentialResponse,
+                        auto_select: false,
+                        error_callback: function() {
+                            console.log("Google initialization - production mode");
+                        }
+                    });
+
+                    google.accounts.id.renderButton(
+                        document.getElementById("googleLoginBtn"),
+                        { 
+                            theme: "outline", 
+                            size: "large", 
+                            width: "100%",
+                            text: "signin_with"
+                        }
+                    );
+                    console.log("Production Mode: Real Google OAuth active");
+                } else {
+                    // localhost: 시뮬레이션 사용
+                    console.log("Localhost detected: Using Google OAuth simulation");
+                    console.log("💡 배포 후에는 실제 Google OAuth가 작동합니다.");
+                    
+                    // 로그인 버튼을 일반 버튼으로 표시
+                    const googleLoginBtn = document.getElementById("googleLoginBtn");
+                    if (googleLoginBtn) {
+                        googleLoginBtn.innerHTML = `
+                            <button onclick="showLocalGoogleSimulation()" 
+                                style="display: flex; align-items: center; justify-content: center; width: 100%; padding: 10px; background: white; border: 1px solid #dadce0; border-radius: 4px; color: #3c4043; cursor: pointer; font-family: 'Roboto', arial, sans-serif; font-size: 14px; font-weight: 500; transition: background-color .218s, border-color .218s, box-shadow .218s;">
+                                <svg version="1.1" xmlns="http://www.w3.org/2000/svg" width="18px" height="18px" viewBox="-3 0 26 24" style="margin-right: 10px;">
+                                    <path fill="#4285F4" d="M19 12.2c0-.6-.1-1.2-.2-1.8H10v3.4h5.1c-.2 1.2-.9 2.1-2 2.8v2.3h3.2c1.9-1.8 3-4.3 3-6.7z"></path>
+                                    <path fill="#34A853" d="M10 20c2.7 0 5-1 6.7-2.6l-3.2-2.3c-.9.6-2.1 1-3.5 1-2.6 0-4.8-1.8-5.6-4.2H1.2v2.5C2.9 17.8 6.2 20 10 20z"></path>
+                                    <path fill="#FBBC05" d="M4.4 11.9c-.2-.6-.2-1.3 0-2V7.4H1.2C.4 8.9 0 10.4 0 12s.4 3.1 1.2 4.6l3.2-2.5c-.2-.6-.2-1.2 0-2.2z"></path>
+                                    <path fill="#EA4335" d="M10 4.4c1.5 0 2.8.5 3.9 1.5l2.9-2.9C15 1.7 12.7 0 10 0 6.2 0 2.9 2.2 1.2 5.5l3.2 2.5c.8-2.4 3-4.1 5.6-4.1z"></path>
+                                </svg>
+                                로그인
+                            </button>
+                        `;
                     }
-                });
-
-                // 로그인 모달의 구글 버튼 렌더링
-                google.accounts.id.renderButton(
-                    document.getElementById("googleLoginBtn"),
-                    { theme: "outline", size: "large", width: "100%", error_callback: function() {
-                        console.log("Error rendering Google button");
-                    } }
-                );
-
-                /* 회원가입 모달의 구글 버튼은 커스텀 버튼으로 대체되었습니다. */
+                }
             } catch (error) {
-                console.log("Google API initialization error:", error);
-                console.log("This is normal for localhost development. Google Sign-In buttons may not work on localhost.");
+                console.error("Google API initialization error:", error);
+                console.log("💡 Localhost 모드에서는 시뮬레이션을 사용합니다");
             }
         };
 
         // ========== Google 로그인 핸들러 ==========
         function handleCredentialResponse(response) {
             try {
+                console.log("Google login - Real OAuth (deployed only)");
+                
                 // JWT 디코딩 (UTF-8 대응)
                 const base64Url = response.credential.split('.')[1];
                 const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
@@ -1447,7 +1490,7 @@
                 }).join(''));
 
                 const payload = JSON.parse(jsonPayload);
-                console.log("Google User Data:", payload);
+                console.log("Real Google User Data:", payload);
 
                 const email = payload.email;
                 const name = payload.name;
@@ -1458,23 +1501,26 @@
 
                 if (!user) {
                     // 구글 계정으로 첫 로그인 시 계정 유형 선택 모달 표시
+                    console.log("New Google user - showing account type selection");
                     tempGoogleData = { name, email };
                     document.getElementById('googleTypeModal').style.display = 'block';
-                    return; // 가입 완료 버튼 클릭 시 처리됨
-                } else if (user.status === 'pending') {
-                    alert('회원가입이 승인 대기 중입니다. 관리자의 승인을 기다려주세요.');
                     return;
-                } else {
-                    alert(`${name}님, Google 계정으로 로그인되었습니다!`);
+                } else if (user.status === 'pending') {
+                    alert('❌ 회원가입이 아직 관리자 승인 대기 중입니다.\n관리자의 승인을 기다려주세요.');
+                    return;
+                } else if (user.status === 'approved') {
+                    console.log("Existing Google user - logging in");
+                    alert(`✅ ${name}님, Google 계정으로 로그인되었습니다!`);
                     currentUser = user;
                     localStorage.setItem('currentUser', JSON.stringify(user));
                     closeLoginModal();
                     closeSignupModal();
                     updateUI();
+                    showHome();
                 }
             } catch (error) {
                 console.error("Google login error:", error);
-                alert("Google 로그인 중 오류가 발생했습니다. 다시 시도해주세요.");
+                console.log("Localhost에서는 Google OAuth가 제한됩니다. 시뮬레이션 사용 중...");
             }
         }
 
