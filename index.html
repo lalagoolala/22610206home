@@ -467,7 +467,8 @@
             <li><a href="#" onclick="showQNA()">❓ 질의응답</a></li>
             <li id="userMenu" class="hidden">
                 <span id="userName"></span>
-                <button onclick="logout()" style="background: rgba(255,255,255,0.3);">로그아웃</button>
+                <button onclick="openDeleteAccountModal()" style="background: rgba(255,255,255,0.3); margin-left: 10px;">🗑️ 회원탈퇴</button>
+                <button onclick="logout()" style="background: rgba(255,255,255,0.3); margin-left: 5px;">🚪 로그아웃</button>
             </li>
             <li id="authMenu">
                 <button onclick="openLoginModal()">🔐 로그인</button>
@@ -570,18 +571,20 @@
         <h1>⚙️ 관리자 패널</h1>
         <div class="tabs">
             <button class="tab-btn active" onclick="switchAdminTab('approval')">회원가입 승인</button>
-            <button class="tab-btn" onclick="switchAdminTab('content')">콘텐츠 편집</button>
-        </div>
+                <button class="tab-btn" onclick="switchAdminTab('users')">회원 관리</button>
+                <button class="tab-btn" onclick="switchAdminTab('content')">콘텐츠 편집</button>
+            </div>
 
-        <!-- 회원가입 승인 탭 -->
-        <div id="approvalTab">
-            <h2 style="color: #ff6b6b; margin-bottom: 20px;">대기 중인 회원가입</h2>
-            <div id="pendingList" class="approval-list"></div>
-        </div>
+            <!-- 회원가입 승인 탭 -->
+            <div id="approvalTab">
+                <h2 style="color: #ff6b6b; margin-bottom: 20px;">대기 중인 회원가입</h2>
+                <div id="pendingList" class="approval-list"></div>
+            </div>
 
-        <!-- 콘텐츠 편집 탭 -->
-        <div id="contentTab" style="display: none;">
-            <h2 style="color: #ff6b6b; margin-bottom: 20px;">콘텐츠 관리</h2>
+            <!-- 회원 관리 탭 -->
+            <div id="usersTab" style="display: none;">
+                <h2 style="color: #ff6b6b; margin-bottom: 20px;">가입 회원 목록</h2>
+                <div id="usersList" class="approval-list"></div>
             <p style="color: #666; margin-bottom: 20px;">홈페이지의 주요 콘텐츠를 수정할 수 있습니다.</p>
         </div>
     </div>
@@ -657,7 +660,7 @@
                     style="position: absolute; top: -10px; left: 50%; transform: translateX(-50%); background: white; padding: 0 10px; color: #999; font-size: 0.8rem;">또는</span>
             </div>
             <div id="googleSignupBtn" style="display: flex; justify-content: center;">
-                <button onclick="handleGoogleSignupClick()"
+                <button onclick="handleGoogleSignupClick()" type="button"
                     style="display: flex; align-items: center; justify-content: center; width: 100%; padding: 10px; background: white; border: 1px solid #dadce0; border-radius: 4px; color: #3c4043; cursor: pointer; font-family: 'Roboto', arial, sans-serif; font-size: 14px; font-weight: 500; transition: background-color .218s, border-color .218s, box-shadow .218s;">
                     <svg version="1.1" xmlns="http://www.w3.org/2000/svg" width="18px" height="18px"
                         viewBox="-3 0 26 24" style="margin-right: 10px;">
@@ -674,7 +677,7 @@
                             d="M10 4.4c1.5 0 2.8.5 3.9 1.5l2.9-2.9C15 1.7 12.7 0 10 0 6.2 0 2.9 2.2 1.2 5.5l3.2 2.5c.8-2.4 3-4.1 5.6-4.1z">
                         </path>
                     </svg>
-                    Googler 계정으로 회원가입
+                    Google 계정으로 회원가입
                 </button>
             </div>
         </div>
@@ -760,6 +763,20 @@
             </div>
             <button onclick="submitGoogleSignup()" class="btn btn-primary" style="width: 100%; margin-top: 20px;">가입
                 완료</button>
+        </div>
+    </div>
+
+    <!-- 회원탈퇴 확인 모달 -->
+    <div id="deleteAccountModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeDeleteAccountModal()">&times;</span>
+            <h2 style="color: #e74c3c;">🗑️ 회원탈퇴</h2>
+            <p style="margin: 20px 0; color: #666; font-size: 1.1rem;">정말로 회원탈퇴 하시겠습니까?</p>
+            <p style="margin: 15px 0; color: #999; font-size: 0.95rem;">⚠️ 회원탈퇴 후에는 계정을 복구할 수 없습니다.</p>
+            <div style="display: flex; gap: 10px; margin-top: 30px;">
+                <button onclick="confirmDeleteAccount()" class="btn" style="background: #e74c3c; color: white; flex: 1;">확인 - 회원탈퇴</button>
+                <button onclick="closeDeleteAccountModal()" class="btn" style="background: #95a5a6; color: white; flex: 1;">취소</button>
+            </div>
         </div>
     </div>
 
@@ -1119,10 +1136,17 @@
 
             if (tab === 'approval') {
                 document.getElementById('approvalTab').style.display = 'block';
+                document.getElementById('usersTab').style.display = 'none';
                 document.getElementById('contentTab').style.display = 'none';
                 loadPendingUsers();
+            } else if (tab === 'users') {
+                document.getElementById('approvalTab').style.display = 'none';
+                document.getElementById('usersTab').style.display = 'block';
+                document.getElementById('contentTab').style.display = 'none';
+                loadApprovedUsers();
             } else {
                 document.getElementById('approvalTab').style.display = 'none';
+                document.getElementById('usersTab').style.display = 'none';
                 document.getElementById('contentTab').style.display = 'block';
             }
         };
@@ -1160,6 +1184,45 @@
             document.getElementById('pendingList').innerHTML = html;
         };
 
+        const loadApprovedUsers = () => {
+            const users = JSON.parse(localStorage.getItem('users'));
+            const adminUser = currentUser;
+            let html = '';
+
+            // 자신을 제외한 다른 사용자만 표시
+            const otherUsers = users.filter(u => u.id !== adminUser.id && u.status === 'approved');
+
+            if (otherUsers.length === 0) {
+                html = '<p style="text-align: center; color: #999; padding: 30px;">가입한 회원이 없습니다.</p>';
+            } else {
+                otherUsers.forEach((user, index) => {
+                    const typeLabel = {
+                        'student': '👤 학생',
+                        'parent': '👨‍👩‍👧 학부모',
+                        'admin': '👑 관리자'
+                    }[user.type] || user.type;
+
+                    const studentInfo = user.studentId ? `<div class="approval-email" style="margin-top: 5px;">📚 ${user.studentId}</div>` : '';
+
+                    html += `
+                        <div class="approval-item">
+                            <div class="approval-info">
+                                <div class="approval-name">${user.name}</div>
+                                <div class="approval-email">${user.email}</div>
+                                ${studentInfo}
+                                <span class="approval-type">${typeLabel}</span>
+                            </div>
+                            <div class="approval-actions">
+                                <button class="btn-small btn-reject" onclick="deleteUserByAdmin(${user.id})" style="background: #e74c3c;">🗑️ 삭제</button>
+                            </div>
+                        </div>
+                    `;
+                });
+            }
+
+            document.getElementById('usersList').innerHTML = html;
+        };
+
         const approveUser = (index) => {
             const pendingUsers = JSON.parse(localStorage.getItem('pendingUsers'));
             const users = JSON.parse(localStorage.getItem('users'));
@@ -1185,6 +1248,48 @@
 
             loadPendingUsers();
             alert(`${user.name}님의 회원가입을 거부했습니다.`);
+        };
+
+        const deleteUserByAdmin = (userId) => {
+            if (confirm('이 사용자를 삭제하시겠습니까?')) {
+                const users = JSON.parse(localStorage.getItem('users'));
+                const userIndex = users.findIndex(u => u.id === userId);
+                
+                if (userIndex > -1) {
+                    const deletedUser = users[userIndex];
+                    users.splice(userIndex, 1);
+                    localStorage.setItem('users', JSON.stringify(users));
+                    loadApprovedUsers();
+                    alert(`${deletedUser.name}님의 계정이 삭제되었습니다.`);
+                }
+            }
+        };
+
+        // ========== 회원탈퇴 ==========
+        const openDeleteAccountModal = () => {
+            document.getElementById('deleteAccountModal').style.display = 'block';
+        };
+
+        const closeDeleteAccountModal = () => {
+            document.getElementById('deleteAccountModal').style.display = 'none';
+        };
+
+        const confirmDeleteAccount = () => {
+            const users = JSON.parse(localStorage.getItem('users'));
+            const userIndex = users.findIndex(u => u.id === currentUser.id);
+
+            if (userIndex > -1) {
+                const userName = users[userIndex].name;
+                users.splice(userIndex, 1);
+                localStorage.setItem('users', JSON.stringify(users));
+                
+                currentUser = null;
+                localStorage.removeItem('currentUser');
+                closeDeleteAccountModal();
+                updateUI();
+                showHome();
+                alert(`${userName}님의 계정이 삭제되었습니다. 그동안 이용해주셔서 감사합니다!`);
+            }
         };
 
         // ========== 페이지 전환 ==========
@@ -1246,12 +1351,29 @@
             // 구글 원탭(One Tap) 프롬프트를 명시적으로 호출
             google.accounts.id.prompt((notification) => {
                 if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
-                    // 프롬프트가 표시되지 않거나 스킵된 경우 로그 출력
-                    console.log("Google One Tap prompt was not displayed or was skipped:", notification.getNotDisplayedReason() || notification.getSkippedReason());
-                    // 사용자에게 다시 로그인 버튼을 누르게 하거나 안내 메시지 표시 가능
-                    alert("Google 로그인을 시작할 수 없습니다. 팝업 차단 여부를 확인하거나 잠시 후 다시 시도해주세요.");
+                    console.log("Google One Tap prompt was not displayed or was skipped");
+                    // 프롬프트가 표시되지 않으면 로그인 플로우로 전환
+                    showGoogleSignupFlow();
                 }
             });
+        };
+
+        const showGoogleSignupFlow = () => {
+            // Google Sign-In with redirect flow
+            const clientId = "878008184488-12sdton6pakapcrembj418rea9h2v4t0.apps.googleusercontent.com";
+            const redirectUri = window.location.origin + window.location.pathname;
+            const scope = "profile email";
+            const responseType = "token";
+            
+            const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
+                `client_id=${clientId}&` +
+                `redirect_uri=${encodeURIComponent(redirectUri)}&` +
+                `response_type=${responseType}&` +
+                `scope=${encodeURIComponent(scope)}&` +
+                `access_type=online`;
+            
+            // 팝업으로 Google 로그인 창 열기
+            window.open(authUrl, 'googleSignup', 'width=500,height=600');
         };
 
         const submitGoogleSignup = () => {
@@ -1289,54 +1411,71 @@
 
         // ========== 초기화 ==========
         window.onload = function () {
-            // Google Login 초기 설정
-            google.accounts.id.initialize({
-                client_id: "878008184488-12sdton6pakapcrembj418rea9h2v4t0.apps.googleusercontent.com",
-                callback: handleCredentialResponse
-            });
+            try {
+                // Google Login 초기 설정 - origin_mismatch 에러 처리
+                google.accounts.id.initialize({
+                    client_id: "878008184488-12sdton6pakapcrembj418rea9h2v4t0.apps.googleusercontent.com",
+                    callback: handleCredentialResponse,
+                    error_callback: function() {
+                        console.log("Google initialization error - This might be due to localhost or domain mismatch");
+                    }
+                });
 
-            // 로그인 모달의 구글 버튼 렌더링
-            google.accounts.id.renderButton(
-                document.getElementById("googleLoginBtn"),
-                { theme: "outline", size: "large", width: "100%" }
-            );
+                // 로그인 모달의 구글 버튼 렌더링
+                google.accounts.id.renderButton(
+                    document.getElementById("googleLoginBtn"),
+                    { theme: "outline", size: "large", width: "100%", error_callback: function() {
+                        console.log("Error rendering Google button");
+                    } }
+                );
 
-            /* 회원가입 모달의 구글 버튼은 커스텀 버튼으로 대체되었습니다. */
+                /* 회원가입 모달의 구글 버튼은 커스텀 버튼으로 대체되었습니다. */
+            } catch (error) {
+                console.log("Google API initialization error:", error);
+                console.log("This is normal for localhost development. Google Sign-In buttons may not work on localhost.");
+            }
         };
 
         // ========== Google 로그인 핸들러 ==========
         function handleCredentialResponse(response) {
-            // JWT 디코딩 (UTF-8 대응)
-            const base64Url = response.credential.split('.')[1];
-            const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-            const jsonPayload = decodeURIComponent(atob(base64).split('').map(function (c) {
-                return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-            }).join(''));
+            try {
+                // JWT 디코딩 (UTF-8 대응)
+                const base64Url = response.credential.split('.')[1];
+                const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+                const jsonPayload = decodeURIComponent(atob(base64).split('').map(function (c) {
+                    return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+                }).join(''));
 
-            const payload = JSON.parse(jsonPayload);
-            console.log("Google User Data:", payload);
+                const payload = JSON.parse(jsonPayload);
+                console.log("Google User Data:", payload);
 
-            const email = payload.email;
-            const name = payload.name;
-            const users = JSON.parse(localStorage.getItem('users'));
+                const email = payload.email;
+                const name = payload.name;
+                const users = JSON.parse(localStorage.getItem('users'));
 
-            // 기존 사용자 확인
-            let user = users.find(u => u.email === email);
+                // 기존 사용자 확인
+                let user = users.find(u => u.email === email);
 
-            if (!user) {
-                // 구글 계정으로 첫 로그인 시 계정 유형 선택 모달 표시
-                tempGoogleData = { name, email };
-                document.getElementById('googleTypeModal').style.display = 'block';
-                return; // 가입 완료 버튼 클릭 시 처리됨
-            } else {
-                alert(`${name}님, Google 계정으로 로그인되었습니다!`);
+                if (!user) {
+                    // 구글 계정으로 첫 로그인 시 계정 유형 선택 모달 표시
+                    tempGoogleData = { name, email };
+                    document.getElementById('googleTypeModal').style.display = 'block';
+                    return; // 가입 완료 버튼 클릭 시 처리됨
+                } else if (user.status === 'pending') {
+                    alert('회원가입이 승인 대기 중입니다. 관리자의 승인을 기다려주세요.');
+                    return;
+                } else {
+                    alert(`${name}님, Google 계정으로 로그인되었습니다!`);
+                    currentUser = user;
+                    localStorage.setItem('currentUser', JSON.stringify(user));
+                    closeLoginModal();
+                    closeSignupModal();
+                    updateUI();
+                }
+            } catch (error) {
+                console.error("Google login error:", error);
+                alert("Google 로그인 중 오류가 발생했습니다. 다시 시도해주세요.");
             }
-
-            currentUser = user;
-            localStorage.setItem('currentUser', JSON.stringify(user));
-            closeLoginModal();
-            closeSignupModal();
-            updateUI();
         }
 
         updateUI();
