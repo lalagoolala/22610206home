@@ -657,7 +657,7 @@
                     style="position: absolute; top: -10px; left: 50%; transform: translateX(-50%); background: white; padding: 0 10px; color: #999; font-size: 0.8rem;">또는</span>
             </div>
             <div id="googleSignupBtn" style="display: flex; justify-content: center;">
-                <button onclick="google.accounts.id.prompt()"
+                <button onclick="handleGoogleSignupClick()"
                     style="display: flex; align-items: center; justify-content: center; width: 100%; padding: 10px; background: white; border: 1px solid #dadce0; border-radius: 4px; color: #3c4043; cursor: pointer; font-family: 'Roboto', arial, sans-serif; font-size: 14px; font-weight: 500; transition: background-color .218s, border-color .218s, box-shadow .218s;">
                     <svg version="1.1" xmlns="http://www.w3.org/2000/svg" width="18px" height="18px"
                         viewBox="-3 0 26 24" style="margin-right: 10px;">
@@ -745,6 +745,21 @@
                 </div>
                 <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 20px;">저장</button>
             </form>
+        </div>
+    </div>
+
+    <!-- 구글 가입 유형 선택 모달 -->
+    <div id="googleTypeModal" class="modal">
+        <div class="modal-content">
+            <h2>👥 계정 유형 선택</h2>
+            <p style="margin-bottom: 20px; color: #666;">Google 계정으로 처음 가입하셨습니다. 사용하실 계정 유형을 선택해주세요.</p>
+            <div class="radio-group">
+                <label><input type="radio" name="googleAccountType" value="student" checked> 🎓 학생</label>
+                <label><input type="radio" name="googleAccountType" value="parent"> 👨‍👩‍👧 학부모</label>
+                <label><input type="radio" name="googleAccountType" value="admin"> 👑 관리자</label>
+            </div>
+            <button onclick="submitGoogleSignup()" class="btn btn-primary" style="width: 100%; margin-top: 20px;">가입
+                완료</button>
         </div>
     </div>
 
@@ -1224,6 +1239,47 @@
             document.getElementById('exerciseContent').textContent = healthInfo.exercise;
         };
 
+        // ========== Google 가입 관련 추가 함수 ==========
+        let tempGoogleData = null;
+
+        const handleGoogleSignupClick = () => {
+            // 구글 원탭(One Tap) 프롬프트를 명시적으로 호출
+            google.accounts.id.prompt((notification) => {
+                if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
+                    // 프롬프트가 표시되지 않거나 스킵된 경우 로그 출력
+                    console.log("Google One Tap prompt was not displayed or was skipped:", notification.getNotDisplayedReason() || notification.getSkippedReason());
+                    // 사용자에게 다시 로그인 버튼을 누르게 하거나 안내 메시지 표시 가능
+                    alert("Google 로그인을 시작할 수 없습니다. 팝업 차단 여부를 확인하거나 잠시 후 다시 시도해주세요.");
+                }
+            });
+        };
+
+        const submitGoogleSignup = () => {
+            const selectedType = document.querySelector('input[name="googleAccountType"]:checked').value;
+            const users = JSON.parse(localStorage.getItem('users'));
+
+            const newUser = {
+                id: Date.now(),
+                name: tempGoogleData.name,
+                email: tempGoogleData.email,
+                userId: tempGoogleData.email.split('@')[0],
+                password: 'GOOGLE_AUTH_USER',
+                type: selectedType,
+                status: 'approved'
+            };
+
+            users.push(newUser);
+            localStorage.setItem('users', JSON.stringify(users));
+            currentUser = newUser;
+            localStorage.setItem('currentUser', JSON.stringify(newUser));
+
+            document.getElementById('googleTypeModal').style.display = 'none';
+            closeSignupModal();
+            updateUI();
+            alert(`Google 계정(${tempGoogleData.name}님)으로 가입 및 로그인되었습니다!`);
+            tempGoogleData = null;
+        };
+
         // ========== 모달 외부 클릭 ==========
         window.onclick = (event) => {
             if (event.target.classList.contains('modal')) {
@@ -1268,23 +1324,10 @@
             let user = users.find(u => u.email === email);
 
             if (!user) {
-                // 구글 계정으로 첫 로그인 시 계정 유형 선택 요청
-                const type = prompt(`${name}님, 환영합니다!\n계정 유형을 입력해주세요 (student: 학생, parent: 학부모, admin: 관리자)`, 'student');
-                const validTypes = ['student', 'parent', 'admin'];
-                const selectedType = validTypes.includes(type) ? type : 'student';
-
-                user = {
-                    id: Date.now(),
-                    name: name,
-                    email: email,
-                    userId: email.split('@')[0],
-                    password: 'GOOGLE_AUTH_USER',
-                    type: selectedType,
-                    status: 'approved'
-                };
-                users.push(user);
-                localStorage.setItem('users', JSON.stringify(users));
-                alert(`Google 계정(${name}님)으로 ${selectedType === 'student' ? '학생' : selectedType === 'parent' ? '학부모' : '관리자'} 가입 및 로그인되었습니다!`);
+                // 구글 계정으로 첫 로그인 시 계정 유형 선택 모달 표시
+                tempGoogleData = { name, email };
+                document.getElementById('googleTypeModal').style.display = 'block';
+                return; // 가입 완료 버튼 클릭 시 처리됨
             } else {
                 alert(`${name}님, Google 계정으로 로그인되었습니다!`);
             }
